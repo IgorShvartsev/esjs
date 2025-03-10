@@ -1,7 +1,7 @@
 
 # JavaScript Element Collection Utility
 
-This utility provides a set of methods to manipulate DOM elements in a more convenient way. It includes methods for adding/removing attributes, classes, styles, and handling events.
+This utility provides a set of methods to manipulate DOM elements in a more convenient way. It includes methods for adding/removing attributes, classes, styles, and handling events. It's a little alternative to famous known jQuery library.
 
 ## Usage
 ```
