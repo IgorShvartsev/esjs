@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en>">
+<head>
+    <title>News</title>
+    <meta charset="utf-8" /> 
+    <meta http-equiv="X-UA-Compatible"  content="IE=edge, chrome=1" /> 
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+ <body>
+    <div class="container"></div>
+
+    <div class="news">
+        <ul class="list">
+            <li class="row first">Home</li>
+            <li class="row second">Politics</li>
+            <li>Bussiness</li>
+            <li class="row fourth">World</li>
+        </ul>
+        <ul class="list">
+            <li>Science</li>
+            <li class="row second">Arts</li>
+            <li>Tech</li>
+            <li class="row fourth">Sport</li>
+        </ul>
+        <button id="btn" style="padding:8px 12px;cursor:pointer">Click Me</button> 
+    </div>
+</body>
+
+<script type="module">
+    import {default as el} from './el.js';
+
+    // create 
+    const newDiv = el.create('div')
+      .addAttr({'role': 'test', 'dest': 'target'})
+      .addClass('green')
+      .html('<h2>NEWS</h2>')
+      .css({background: '#999', color: '#fff', display: 'flex', 'justify-content': 'center'});
+    el.q('.container').append(newDiv);
+
+    // modify
+    const li = el.q('.news')
+      .find('ul').css({'list-style': 'none', 'padding-left': 0})
+      .find('li').css({padding: '8px 10px 8px'})
+      .siblings('.second').css('background', '#fdff77').css('color', '#118ca7');
+
+    const filteredCollection = li.filter(function(element, index) {
+        if (index === 0) {
+            return true;
+        }
+    });
+
+    // assign event
+    el.q('.news').on('click', '#btn' , (e) => alert('Clicked'));
+
+    console.log('Filtered ' + filteredCollection.length() + ' element(s)');
+</script>
+
+</html>
