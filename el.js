@@ -8,9 +8,7 @@ export default (() => {
     const buildInKeyboardEventTypes = ['onkeydown', 'onkeypress', 'onkeyup'];
     const buildInAnimationEventTypes = ['animationend', 'animationiteration', 'animationstart'];
 
-    const create = (tag) => {
-        return new ElementCollection(document.createElement(tag));
-    };
+    const create = (tag) => new ElementCollection(document.createElement(tag));
 
     const q = (selector) => new ElementCollection(
         selector instanceof Element ? selector : [...document.querySelectorAll(selector)]
@@ -25,6 +23,10 @@ export default (() => {
 
         get el() {
             return this.#el;
+        }
+
+        get(index = 0) {
+            return this.#el[index] ?? null;
         }
 
         length() {
@@ -42,38 +44,33 @@ export default (() => {
         }
 
         removeAttr (attr) {
-            this.#handleCollection((el) => {
-                el.removeAttribute(attr);
-            });
+            this.#handleCollection((el) => el.removeAttribute(attr));
             return this;
         }
 
         addClass(...className) {
-            this.#handleCollection((el) => {
-                el.classList.add(...className);
-            });
+            this.#handleCollection((el) => el.classList.add(...className));
             return this;
         }
 
         removeClass(...className) {
-            this.#handleCollection((el) => {
-                el.classList.remove(...className);
-            });
+            this.#handleCollection((el) => el.classList.remove(...className));
             return this;
         }
 
         hasClass(className) {
-            let result = false;
-            this.#handleCollection((el) => {
-                if (result) {
-                    return;
-                }
-                result = el.classList.contains(className);
-            });
-            return result;
+            return this.#el.length ? this.#el[0].classList.contains(className) : false;
         }
 
         css(name, v) {
+            if (typeof v === 'undefined' && typeof name === 'string') {
+                let result = '';
+                if (this.#el.length) {
+                    let compStyle = window.getComputedStyle(this.#el[0]);
+                    result = compStyle.getPropertyValue(name);
+                }
+                return result;
+            }
             this.#handleCollection((el) => {
                 name = this.#makeAssoc(name, v)
                 for (const [key, v] of Object.entries(name)) {
@@ -104,62 +101,47 @@ export default (() => {
         }
 
         closest(selector) {
-            let collection = [];
-            this.#handleCollection((el) => {
-                let closestEl = el.closest(selector);
-                if (closestEl) {
-                    collection.push(closestEl);
-                }
-            });
-            return new ElementCollection(collection);
+            const collection = this.#el.map(el => el.closest(selector));
+            return new ElementCollection([...new Set(collection)]);
         }
 
         siblings(selector) {
             let collection = [];
             this.#handleCollection((el) => {
-                let siblings = Array.prototype.slice.call(el.parentNode.children);
-                for (let i = siblings.length; i--;) {
-                    if (siblings[i] === el) {
-                        siblings.splice(i, 1);
-                        if (!selector) {
-                            break;
-                        }
-                    } else if (!siblings[i].matches(selector)) {
-                        siblings.splice(i, 1);
-                    }
-                }
+                let siblings = [...el.parentNode.children].filter(sibling => sibling !== el && (!selector || sibling.matches(selector)));
                 if (siblings.length) {
                     collection.push(...siblings);
                 }
             });
-            return new ElementCollection(collection);
+            return new ElementCollection([...new Set(collection)]);
         }
 
         match(selector) {
             let result = false;
             this.#handleCollection((el) => {
-                result = el.matches(selector);
+                if (result) {
+                    return;
+                }
+                result = el.matches(selector)
             });
             return result;
         }
 
         isVisible() {
-            let result = false;
-            this.#handleCollection((el) => {
-                result = el.checkVisibility({
+            return this.#el.length 
+                ? this.#el[0].checkVisibility({
                     opacityProperty: true,
                     visibilityProperty: true,
-                });
-            });
-            return result;
+                })
+                : false;
         }
 
         first() {
-            return new ElementCollection(this.#el.length >= 1 ? this.#el[0] : []);
+            return new ElementCollection(this.#el.length ? this.#el[0] : []);
         }
 
         last() {
-            return new ElementCollection(this.#el.length >= 1 ? this.#el[this.#el.length - 1] : []);
+            return new ElementCollection(this.#el.length ? this.#el[this.#el.length - 1] : []);
         }
 
         find(selector) {
@@ -170,86 +152,66 @@ export default (() => {
                     collection.push(...foundEls);
                 }
             });
-            return new ElementCollection(collection);
+            return new ElementCollection([...new Set(collection)]);
         }
 
         filter(cb) {
-            let collection = [];
-            if (typeof cb === 'function') {
-                collection = this.#el.filter(cb);
-            } 
-            return new ElementCollection(collection);
+            return new ElementCollection(typeof cb === 'function' ? this.#el.filter(cb) : []);
         }
 
         html(content) {
-            let result;
-            this.#handleCollection((el) => {
-                if (typeof content === 'undefined') {
-                    result = !result ? el.innerHTML : result;
-                } else {    
-                    el.innerHTML = content;
-                    result = this;
-                }
-            });
-            return result;
+            if (typeof content === 'undefined') {
+                return this.#el.length ? this.#el[0].innerHTML : '';
+            }
+            this.#handleCollection((el) => el.innerHTML = content);
+            return this;
         }
 
         text(content) {
-            this.#handleCollection((el) => {
-                el.appendChild(document.createTextNode(content));
-            });
+            if (content) {            
+                this.#handleCollection((el) => el.appendChild(document.createTextNode(content)));
+            }
             return this;
         }
 
         data(name, value) {
-            let result = this;
-            let isRead = false;
-            this.#handleCollection((el) => {
-                if (isRead) {
-                    return;
-                }
-                if (typeof value === 'undefined') {
+            if (typeof value === 'undefined') {
+                let result = '';
+                if (this.#el.length) {
                     try {
-                        result = JSON.parse(el.dataset[name]);
+                        result = JSON.parse(this.#el[0].dataset[name]);
                     } catch(error) {
-                        result = el.dataset[name];
+                        result = this.#el[0].dataset[name];
                     }
-                    isRead = true;
-                } else {
-                    if (typeof value === 'object') {
-                        value = JSON.stringify(value);
-                    }
-                    el.dataset[name] = value;
                 }
+                return result;
+            }
+            this.#handleCollection((el) => {
+                if (typeof value === 'object') {
+                    value = JSON.stringify(value);
+                }
+                el.dataset[name] = value;
             });
-            return result;
+            return this;
         }
 
         clear() {
-            this.#handleCollection((el) => {
-                el.remove();
-            });
+            this.#handleCollection((el) => el.remove());
             return this;
         }
 
         empty () {
-            this.#handleCollection((el) => {
-                el.replaceChildren();
-            });
+            this.#handleCollection((el) => el.replaceChildren());
             return this;
         }
 
         hide() {
-            this.#handleCollection((el) => {
-                el.style.display = 'none';
-            });
+            this.#handleCollection((el) => el.style.display = 'none');
             return this;
         }
 
         show() {
-            this.#handleCollection((el) => {
-                el.style.display = '';
-            });
+            this.#handleCollection((el) => el.style.display = '');
             return this;
         }
 
@@ -307,15 +269,11 @@ export default (() => {
         }
 
         shadowView(htmlContent) {
-            let initialized = false;
-            this.#handleCollection((el) => {
-                if (initialized) {
-                    return;
-                }
-                el.attachShadow({mode: 'open'});
-                el.shadowRoot.innerHTML = htmlContent;
-                initialized = true;
-            });
+            if (this.#el.length) {
+                this.#el[0].attachShadow({mode: 'open'});
+                this.#el[0].shadowRoot.innerHTML = htmlContent;
+            } 
+            return this;
         }
 
         #makeAssoc(key, v) {
