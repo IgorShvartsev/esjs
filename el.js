@@ -11,7 +11,9 @@ export default (() => {
     const create = (tag) => new ElementCollection(document.createElement(tag));
 
     const q = (selector) => new ElementCollection(
-        selector instanceof Element ? selector : [...document.querySelectorAll(selector)]
+        selector instanceof Element 
+            ? selector 
+            : (selector instanceof HTMLCollection ? [...selector] : [...document.querySelectorAll(selector)])
     );
 
     class ElementCollection {
@@ -85,8 +87,18 @@ export default (() => {
             return this;
         }
 
+        appendTo(element) {
+            this.#attachToCommand('append', element);
+            return this;
+        }
+
         prepend(element) {
             this.#attachCommand('prepend', element);
+            return this;
+        }
+
+        prependTo(element) {
+            this.#attachToCommand('prepend', element);
             return this;
         }
 
@@ -98,6 +110,11 @@ export default (() => {
         after(element) {
             this.#attachCommand('after', element);
             return this;
+        }
+
+        parent() {
+            const collection = this.#el.map(el => el.parentElement);
+            return new ElementCollection([...new Set(collection)]);
         }
 
         closest(selector) {
@@ -114,6 +131,24 @@ export default (() => {
                 }
             });
             return new ElementCollection([...new Set(collection)]);
+        }
+
+        children(selector) {
+            let collection = [];
+            this.#handleCollection((el) => {
+                let children = [...el.children].filter(child => !selector || child.matches(selector));
+                if (children.length) {
+                    collection.push(...children);
+                }
+            });
+            return new ElementCollection([...new Set(collection)]);
+        }
+
+        each(cb) {
+            if (typeof cb === 'function') {
+                this.#el.forEach((el, index) => cb.call(el, el, index));
+            }
+            return this;
         }
 
         match(selector) {
@@ -294,6 +329,13 @@ export default (() => {
             this.#handleCollection((el) => {
                 element = element instanceof ElementCollection ? element.el : [element];
                 element.forEach((item) => el[command](item));
+            });
+        }
+
+        #attachToCommand(command, element) {
+            this.#handleCollection((el) => {
+                element = element instanceof ElementCollection ? element.el : [element];
+                element.forEach((item) => item[command](el));
             });
         }
     }
